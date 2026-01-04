@@ -90,5 +90,5 @@
       CHANGE PASSWORD AFTER FIRST LOGIN!
 
       SSH tunnel for remote access:
-        ssh -L 10086:127.0.0.1:10086 user@{{ inventory_hostname }}
+        ssh user@{{ inventory_hostname }} -L 10086:127.0.0.1:10086 -N
         Then open: http://localhost:10086
