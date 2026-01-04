@@ -1,0 +1,9 @@
+---
+# WGDashboard version (tag from GitHub, e.g., "v4.3.1" or "latest")
+wgdashboard_version: "latest"
+
+# Installation directory
+wgdashboard_install_dir: /opt/wgdashboard
+
+# WireGuard interface (for systemd service dependency)
+wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"

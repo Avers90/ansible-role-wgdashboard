@@ -1,0 +1,94 @@
+---
+- name: wgdashboard | Fail if distro is not supported
+  ansible.builtin.fail:
+    msg: "Distribution '{{ ansible_distribution }}' is not supported. Supported: Debian, Ubuntu"
+  when: ansible_distribution not in ['Debian', 'Ubuntu']
+
+- name: wgdashboard | Install dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - python3
+      - python3-pip
+      - python3-venv
+      - net-tools
+    state: present
+    update_cache: true
+
+- name: wgdashboard | Check if WGDashboard is already installed
+  ansible.builtin.stat:
+    path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
+  register: wgdashboard_installed
+
+- name: wgdashboard | Display installation status
+  ansible.builtin.debug:
+    msg: "WGDashboard is {{ 'already installed' if wgdashboard_installed.stat.exists else 'not installed' }}."
+
+- name: wgdashboard | Clone WGDashboard repository (latest)
+  ansible.builtin.git:
+    repo: https://github.com/WGDashboard/WGDashboard.git
+    dest: "{{ wgdashboard_install_dir }}"
+    version: main
+    force: true
+  when: wgdashboard_version == "latest"
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Clone WGDashboard repository (specific version)
+  ansible.builtin.git:
+    repo: https://github.com/WGDashboard/WGDashboard.git
+    dest: "{{ wgdashboard_install_dir }}"
+    version: "{{ wgdashboard_version }}"
+    force: true
+  when: wgdashboard_version != "latest"
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Make wgd.sh executable
+  ansible.builtin.file:
+    path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
+    mode: "0755"
+
+- name: wgdashboard | Check if wg-dashboard.ini exists
+  ansible.builtin.stat:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+  register: wgdashboard_config
+
+- name: wgdashboard | Run WGDashboard install script
+  ansible.builtin.shell: |
+    cd {{ wgdashboard_install_dir }}/src
+    ./wgd.sh install
+  when: not wgdashboard_config.stat.exists
+
+- name: wgdashboard | Deploy systemd service
+  ansible.builtin.template:
+    src: wg-dashboard.service.j2
+    dest: /etc/systemd/system/wg-dashboard.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart WGDashboard
+
+- name: wgdashboard | Enable and start WGDashboard
+  ansible.builtin.systemd:
+    name: wg-dashboard
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: wgdashboard | Display access information
+  ansible.builtin.debug:
+    msg: |
+      WGDashboard installed successfully!
+
+      Access: http://127.0.0.1:10086
+
+      Default credentials:
+        Username: admin
+        Password: admin
+
+      CHANGE PASSWORD AFTER FIRST LOGIN!
+
+      SSH tunnel for remote access:
+        ssh -L 10086:127.0.0.1:10086 user@{{ inventory_hostname }}
+        Then open: http://localhost:10086

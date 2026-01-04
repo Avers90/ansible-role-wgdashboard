@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+
+[Unit]
+After=syslog.target network-online.target
+Wants=wg-quick@{{ wgdashboard_wg_interface }}.service
+ConditionPathIsDirectory=/etc/wireguard
+
+[Service]
+Type=forking
+PIDFile={{ wgdashboard_install_dir }}/src/gunicorn.pid
+WorkingDirectory={{ wgdashboard_install_dir }}/src
+ExecStart={{ wgdashboard_install_dir }}/src/wgd.sh start
+ExecStop={{ wgdashboard_install_dir }}/src/wgd.sh stop
+ExecReload={{ wgdashboard_install_dir }}/src/wgd.sh restart
+TimeoutSec=120
+PrivateTmp=yes
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
