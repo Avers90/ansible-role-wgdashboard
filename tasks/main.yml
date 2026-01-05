@@ -20,43 +20,119 @@
     path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
   register: wgdashboard_installed
 
+- name: wgdashboard | Get current installed version
+  ansible.builtin.shell: |
+    cd {{ wgdashboard_install_dir }} && git describe --tags --abbrev=0 2>/dev/null || echo "unknown"
+  register: wgdashboard_current_version
+  changed_when: false
+  failed_when: false
+  when: wgdashboard_installed.stat.exists
+
 - name: wgdashboard | Display installation status
   ansible.builtin.debug:
-    msg: "WGDashboard is {{ 'already installed' if wgdashboard_installed.stat.exists else 'not installed' }}."
+    msg: "WGDashboard is {{ 'installed (version ' + wgdashboard_current_version.stdout | default('unknown') + ')' if wgdashboard_installed.stat.exists else 'not installed' }}."
 
-- name: wgdashboard | Clone WGDashboard repository (latest)
-  ansible.builtin.git:
-    repo: https://github.com/WGDashboard/WGDashboard.git
-    dest: "{{ wgdashboard_install_dir }}"
-    version: main
-    force: true
-  when: wgdashboard_version == "latest"
-  notify: Restart WGDashboard
+- name: wgdashboard | Check if update is needed
+  ansible.builtin.set_fact:
+    wgdashboard_needs_install: "{{ not wgdashboard_installed.stat.exists }}"
+    wgdashboard_needs_update: "{{ wgdashboard_installed.stat.exists and (wgdashboard_current_version.stdout | default('') != wgdashboard_version) }}"
 
-- name: wgdashboard | Clone WGDashboard repository (specific version)
+- name: wgdashboard | Display version information
+  ansible.builtin.debug:
+    msg: |
+      Current version: {{ wgdashboard_current_version.stdout | default('not installed') }}
+      Target version: {{ wgdashboard_version }}
+      Needs install: {{ wgdashboard_needs_install }}
+      Needs update: {{ wgdashboard_needs_update }}
+
+## Fresh install
+- name: wgdashboard | Clone WGDashboard repository (fresh install)
   ansible.builtin.git:
     repo: https://github.com/WGDashboard/WGDashboard.git
     dest: "{{ wgdashboard_install_dir }}"
     version: "{{ wgdashboard_version }}"
     force: true
-  when: wgdashboard_version != "latest"
-  notify: Restart WGDashboard
+  when: wgdashboard_needs_install
 
-- name: wgdashboard | Make wgd.sh executable
+- name: wgdashboard | Make wgd.sh executable (fresh install)
   ansible.builtin.file:
     path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
     mode: "0755"
+  when: wgdashboard_needs_install
 
-- name: wgdashboard | Check if wg-dashboard.ini exists
-  ansible.builtin.stat:
-    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
-  register: wgdashboard_config
-
-- name: wgdashboard | Run WGDashboard install script
+- name: wgdashboard | Run WGDashboard install script (fresh install)
   ansible.builtin.shell: |
     cd {{ wgdashboard_install_dir }}/src
     ./wgd.sh install
-  when: not wgdashboard_config.stat.exists
+  when: wgdashboard_needs_install
+
+## Update existing installation
+- name: wgdashboard | Stop WGDashboard before update
+  ansible.builtin.systemd:
+    name: wg-dashboard
+    state: stopped
+  when: wgdashboard_needs_update
+  ignore_errors: true
+
+- name: wgdashboard | Update WGDashboard
+  ansible.builtin.shell: |
+    cd {{ wgdashboard_install_dir }}
+    git fetch --tags
+    git checkout {{ wgdashboard_version }}
+    chmod +x src/wgd.sh
+    cd src
+    ./wgd.sh install
+  when: wgdashboard_needs_update
+  notify: Restart WGDashboard
+
+## Fix permissions after wgd.sh install (it sets 755 on /etc/wireguard files)
+- name: wgdashboard | Find private key files
+  ansible.builtin.find:
+    paths: /etc/wireguard
+    patterns: "*_privatekey"
+  register: privatekey_files
+
+- name: wgdashboard | Find public key files
+  ansible.builtin.find:
+    paths: /etc/wireguard
+    patterns: "*_publickey"
+  register: publickey_files
+
+- name: wgdashboard | Find config files
+  ansible.builtin.find:
+    paths: /etc/wireguard
+    patterns: "*.conf"
+  register: config_files
+
+- name: wgdashboard | Fix private key permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ privatekey_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: wgdashboard | Fix public key permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ publickey_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: wgdashboard | Fix config file permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop: "{{ config_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
 
 - name: wgdashboard | Deploy systemd service
   ansible.builtin.template:
@@ -79,7 +155,7 @@
 - name: wgdashboard | Display access information
   ansible.builtin.debug:
     msg: |
-      WGDashboard installed successfully!
+      WGDashboard {{ wgdashboard_version }} installed successfully!
 
       Access: http://127.0.0.1:10086
 

@@ -1,6 +1,6 @@
 # ansible-role-wgdashboard
 
-Install and configure WGDashboard - web UI for WireGuard.
+Install and configure [WGDashboard](https://github.com/WGDashboard/WGDashboard) - web UI for WireGuard.
 
 ## Requirements
 
@@ -18,9 +18,41 @@ Other distributions will fail with an error message.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `wgdashboard_version` | `latest` | Version tag from GitHub |
+| `wgdashboard_version` | `v4.3.1` | Version tag from GitHub |
 | `wgdashboard_install_dir` | `/opt/wgdashboard` | Installation directory |
 | `wgdashboard_wg_interface` | `{{ wireguard_interface }}` | WireGuard interface (for systemd) |
+
+## Version Management
+
+**Important:** Always specify exact version in `defaults/main.yml`.
+
+### Current version
+
+```yaml
+wgdashboard_version: "v4.3.1"
+```
+
+### Updating to new version
+
+1. Check [WGDashboard releases](https://github.com/WGDashboard/WGDashboard/releases)
+2. Update `wgdashboard_version` in `defaults/main.yml`
+3. Run playbook — it will detect version mismatch and update
+
+### What happens during update
+
+1. Stop WGDashboard service
+2. `git fetch --tags`
+3. `git checkout <version>`
+4. `./wgd.sh install`
+5. Fix file permissions
+6. Restart service
+
+### What's preserved during update
+
+- `wg-dashboard.ini` — configuration
+- `db/` — database
+- Users and passwords
+- Peer settings
 
 ## Default Credentials
 
@@ -41,8 +73,6 @@ All settings are managed through the WGDashboard GUI:
 - Peer defaults (DNS, MTU, etc.)
 - Autostart interfaces
 
-Ansible only installs and updates the application code, it does not modify `wg-dashboard.ini`.
-
 ## Access Methods
 
 By default, WGDashboard listens on `127.0.0.1:10086`.
@@ -50,7 +80,7 @@ By default, WGDashboard listens on `127.0.0.1:10086`.
 ### SSH Tunnel (recommended)
 
 ```bash
-ssh -L 10086:127.0.0.1:10086 user@server
+ssh user@server -L 10086:127.0.0.1:10086 -N
 ```
 
 Then open: <http://localhost:10086>
@@ -59,15 +89,19 @@ Then open: <http://localhost:10086>
 
 Use `ansible-role-nginx` to configure reverse proxy with SSL.
 
-## Examples
+## Security
 
-### Specific version
+This role automatically fixes file permissions in `/etc/wireguard` after WGDashboard installation:
 
-```yaml
-wgdashboard_version: "v4.3.1"
-```
+| File | Permissions |
+|------|-------------|
+| `*.conf` | `0600` |
+| `*_privatekey` | `0600` |
+| `*_publickey` | `0644` |
 
-## Files Created
+WGDashboard's install script sets `755` on these files, which is insecure.
+
+## Files
 
 | File | Description |
 |------|-------------|
