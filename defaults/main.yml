@@ -3,7 +3,7 @@
 wgdashboard_version: "v4.3.1"
 
 ## Installation directory
-wgdashboard_install_dir: /opt/wgdashboard
+wgdashboard_install_dir: /opt/WGDashboard
 
 ## WireGuard interface (for systemd service dependency and autostart)
 wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"
