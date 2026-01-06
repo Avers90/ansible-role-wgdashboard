@@ -16,9 +16,10 @@ wgdashboard_admin_pass_hash: "$2y$05$.WkZMFKbfNnhqBqZTNdOUuMGumScKTVnS.RJuwjyKTF
 ## Server settings
 wgdashboard_app_ip: "127.0.0.1"
 wgdashboard_app_port: 10086
-wgdashboard_welcome_session: false
-wgdashboard_enable_totp: false
-wgdashboard_totp_verified: false
+## !!!false in double quote!!!
+wgdashboard_welcome_session: "false"
+wgdashboard_enable_totp: "false"
+wgdashboard_totp_verified: "false"
 
 ## Peer defaults
 wgdashboard_peer_global_dns: "{{ wireguard_address | default('10.0.0.1/24') | ansible.utils.ipaddr('address') }}"
