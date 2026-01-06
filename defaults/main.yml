@@ -9,13 +9,16 @@ wgdashboard_install_dir: /opt/wgdashboard
 wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"
 
 ## Account settings
-# wgdashboard_admin_user: "admin"
+wgdashboard_admin_user: "admin"
 ## By default --- WGDashboard admin pass without hash: "admin"
-# wgdashboard_admin_pass_hash: "$2y$05$.WkZMFKbfNnhqBqZTNdOUuMGumScKTVnS.RJuwjyKTF2XVt29NWiW"
+wgdashboard_admin_pass_hash: "$2y$05$.WkZMFKbfNnhqBqZTNdOUuMGumScKTVnS.RJuwjyKTF2XVt29NWiW"
 
 ## Server settings
 wgdashboard_app_ip: "127.0.0.1"
 wgdashboard_app_port: 10086
+wgdashboard_welcome_session: false
+wgdashboard_enable_totp: false
+wgdashboard_totp_verified: false
 
 ## Peer defaults
 wgdashboard_peer_global_dns: "{{ wireguard_address | default('10.0.0.1/24') | ansible.utils.ipaddr('address') }}"

@@ -67,27 +67,47 @@
   when: wgdashboard_needs_install
 
 ## Configure wg-dashboard.ini (only on fresh install)
-# - name: wgdashboard | Configure admin username
-#   community.general.ini_file:
-#     path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
-#     section: Account
-#     option: username
-#     value: "{{ wgdashboard_admin_user }}"
-#     mode: "0600"
-#   when: wgdashboard_needs_install
-#   notify: Restart WGDashboard
+- name: wgdashboard | Configure admin username
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Account
+    option: username
+    value: "{{ wgdashboard_admin_user }}"
+    mode: "0600"
+  when: wgdashboard_needs_install
+  notify: Restart WGDashboard
 
-# - name: wgdashboard | Configure admin password
-#   community.general.ini_file:
-#     path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
-#     section: Account
-#     option: password
-#     value: "{{ wgdashboard_admin_pass_hash }}"
-#     mode: "0600"
-#   when:
-#     - wgdashboard_needs_install
-#     - wgdashboard_admin_pass_hash != ""
-#   notify: Restart WGDashboard
+- name: wgdashboard | Configure admin password
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Account
+    option: password
+    value: "{{ wgdashboard_admin_pass_hash }}"
+    mode: "0600"
+  when:
+    - wgdashboard_needs_install
+    - wgdashboard_admin_pass_hash != ""
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Configure enable totp
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Account
+    option: enable_totp
+    value: "{{ wgdashboard_enable_totp }}"
+    mode: "0600"
+  when: wgdashboard_needs_install
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Configure totp verified
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Account
+    option: totp_verified
+    value: "{{ wgdashboard_totp_verified }}"
+    mode: "0600"
+  when: wgdashboard_needs_install
+  notify: Restart WGDashboard
 
 - name: wgdashboard | Configure app_ip
   community.general.ini_file:
@@ -135,6 +155,16 @@
     section: WireGuardConfiguration
     option: autostart
     value: "{{ wgdashboard_wg_interface }}"
+    mode: "0600"
+  when: wgdashboard_needs_install
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Configure welcome session
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Other
+    option: welcome_session
+    value: "{{ wgdashboard_welcome_session }}"
     mode: "0600"
   when: wgdashboard_needs_install
   notify: Restart WGDashboard
@@ -225,21 +255,6 @@
     state: started
     daemon_reload: true
 
-# - name: wgdashboard | Display access information
-#   ansible.builtin.debug:
-#     msg: |
-#       WGDashboard {{ wgdashboard_version }} installed successfully!
-
-#       Access: http://{{ wgdashboard_app_ip }}:{{ wgdashboard_app_port }}
-
-#       Credentials:
-#         Username: {{ wgdashboard_admin_user }}
-#         Password: {{ '(custom password set)' if wgdashboard_admin_pass_hash != '' else 'admin (CHANGE IT!)' }}
-
-#       SSH tunnel for remote access:
-#         ssh user@{{ inventory_hostname }} -L {{ wgdashboard_app_port }}:127.0.0.1:{{ wgdashboard_app_port }} -N
-#         Then open: http://localhost:{{ wgdashboard_app_port }}
-
 - name: wgdashboard | Display access information
   ansible.builtin.debug:
     msg: |
@@ -248,8 +263,8 @@
       Access: http://{{ wgdashboard_app_ip }}:{{ wgdashboard_app_port }}
 
       Credentials:
-        Username: admin
-        Password: admin (CHANGE IT!)
+        Username: {{ wgdashboard_admin_user }}
+        Password: {{ '(custom password set)' if wgdashboard_admin_pass_hash != '' else 'admin (CHANGE IT!)' }}
 
       SSH tunnel for remote access:
         ssh user@{{ inventory_hostname }} -L {{ wgdashboard_app_port }}:127.0.0.1:{{ wgdashboard_app_port }} -N
