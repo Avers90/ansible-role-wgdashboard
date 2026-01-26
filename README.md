@@ -15,7 +15,7 @@ Other distributions will fail with an error message.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `wgdashboard_version` | `v4.3.1` | Version tag from GitHub |
-| `wgdashboard_install_dir` | `/opt/wgdashboard` | Installation directory |
+| `wgdashboard_install_dir` | `/opt/WGDashboard` | Installation directory |
 | `wgdashboard_wg_interface` | `{{ wireguard_interface }}` | WireGuard interface |
 | `wgdashboard_admin_user` | `admin` | Admin username |
 | `wgdashboard_admin_pass_hash` | `""` | Bcrypt password hash (empty = default 'admin') |
@@ -141,8 +141,8 @@ WGDashboard's install script sets `755` on these files, which is insecure.
 
 | File | Description |
 |------|-------------|
-| `/opt/wgdashboard/` | Application directory |
-| `/opt/wgdashboard/src/wg-dashboard.ini` | Configuration (managed via GUI) |
+| `/opt/WGDashboard/` | Application directory |
+| `/opt/WGDashboard/src/wg-dashboard.ini` | Configuration (managed via GUI) |
 | `/etc/systemd/system/wg-dashboard.service` | Systemd service |
 
 ## Service Management
@@ -158,7 +158,7 @@ journalctl -u wg-dashboard -f
 systemctl restart wg-dashboard
 
 # Using wgd.sh
-cd /opt/wgdashboard/src
+cd /opt/WGDashboard/src
 ./wgd.sh start
 ./wgd.sh stop
 ./wgd.sh restart

@@ -10,8 +10,13 @@ wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"
 
 ## Account settings
 wgdashboard_admin_user: "admin"
-## By default --- WGDashboard admin pass without hash: "admin"
-wgdashboard_admin_pass_hash: "$2y$05$.WkZMFKbfNnhqBqZTNdOUuMGumScKTVnS.RJuwjyKTF2XVt29NWiW"
+
+## Admin password hash (bcrypt)
+## IMPORTANT: Generate your own hash! Default "admin" is insecure!
+## Generate with: htpasswd -B -n -b "" 'your-password' | cut -d: -f2
+## Or Python: python3 -c "import bcrypt; print(bcrypt.hashpw(b'your-password', bcrypt.gensalt()).decode())"
+## Default hash below is for password "admin" - CHANGE IT!
+wgdashboard_admin_pass_hash: ""
 
 ## Server settings
 wgdashboard_app_ip: "127.0.0.1"

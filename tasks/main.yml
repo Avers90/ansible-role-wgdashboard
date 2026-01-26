@@ -64,6 +64,8 @@
   ansible.builtin.shell: |
     cd {{ wgdashboard_install_dir }}/src
     ./wgd.sh install
+  register: wgd_install_result
+  changed_when: true
   when: wgdashboard_needs_install
 
 ## Configure wg-dashboard.ini (only on fresh install)
@@ -87,6 +89,7 @@
   when:
     - wgdashboard_needs_install
     - wgdashboard_admin_pass_hash != ""
+  no_log: true
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure enable totp
@@ -175,7 +178,7 @@
     name: wg-dashboard
     state: stopped
   when: wgdashboard_needs_update
-  ignore_errors: true
+  failed_when: false
 
 - name: wgdashboard | Update WGDashboard
   ansible.builtin.shell: |
@@ -185,6 +188,8 @@
     chmod +x src/wgd.sh
     cd src
     ./wgd.sh install
+  register: wgd_update_result
+  changed_when: true
   when: wgdashboard_needs_update
   notify: Restart WGDashboard
 
