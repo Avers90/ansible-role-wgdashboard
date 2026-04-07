@@ -13,6 +13,11 @@ wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"
 ## VPN backend: wireguard (wg-quick@) or amneziawg (awg-quick@)
 wgdashboard_wg_backend: "wireguard"
 
+## Directory where VPN configs and keys are stored
+## wireguard:   /etc/wireguard
+## amneziawg:   /etc/amnezia/amneziawg
+wgdashboard_vpn_config_dir: "{{ '/etc/amnezia/amneziawg' if wgdashboard_wg_backend == 'amneziawg' else '/etc/wireguard' }}"
+
 ## Account settings
 wgdashboard_admin_user: "admin"
 

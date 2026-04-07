@@ -253,22 +253,22 @@
   when: wgdashboard_needs_update
   notify: Restart WGDashboard
 
-## Fix permissions after wgd.sh install (it sets 755 on /etc/wireguard files)
+## Fix permissions after wgd.sh install (it sets 755 on VPN config files)
 - name: wgdashboard | Find private key files
   ansible.builtin.find:
-    paths: /etc/wireguard
+    paths: "{{ wgdashboard_vpn_config_dir }}"
     patterns: "*_privatekey"
   register: privatekey_files
 
 - name: wgdashboard | Find public key files
   ansible.builtin.find:
-    paths: /etc/wireguard
+    paths: "{{ wgdashboard_vpn_config_dir }}"
     patterns: "*_publickey"
   register: publickey_files
 
 - name: wgdashboard | Find config files
   ansible.builtin.find:
-    paths: /etc/wireguard
+    paths: "{{ wgdashboard_vpn_config_dir }}"
     patterns: "*.conf"
   register: config_files
 
