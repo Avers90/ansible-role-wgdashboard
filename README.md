@@ -81,16 +81,34 @@ wgdashboard_version: "v4.3.1"
 ### What happens during update
 
 1. Stop WGDashboard service
-2. `git fetch --tags`
-3. `git checkout <version>`
-4. `./wgd.sh install`
-5. Fix file permissions
-6. Restart service
+2. Create backup of user data (see below)
+3. `git fetch --tags`
+4. `git checkout <version>`
+5. `./wgd.sh install`
+6. Fix file permissions
+7. Restart service
+
+### Backup before update
+
+Before every update, the role automatically creates a versioned backup of all user data:
+
+```
+/opt/WGDashboard.backup.<old-version>/
+├── db/                    # all SQLite databases
+│   ├── wgdashboard.db     # peers, traffic stats, API keys, share links
+│   └── wgdashboard_job.db # scheduled jobs
+├── wg-dashboard.ini       # dashboard config (credentials, settings)
+└── ssl-tls.ini            # SSL config (if present)
+```
+
+The last **3 backups** are retained; older ones are removed automatically.
+
+Note: `/etc/wireguard/*.conf` files are not backed up — they live outside the repository and are never touched by `git checkout`.
 
 ### What's preserved during update
 
 - `wg-dashboard.ini` — configuration
-- `db/` — database
+- `db/` — database with all peers and traffic history
 - Users and passwords
 - Peer settings
 
@@ -143,6 +161,9 @@ WGDashboard's install script sets `755` on these files, which is insecure.
 |------|-------------|
 | `/opt/WGDashboard/` | Application directory |
 | `/opt/WGDashboard/src/wg-dashboard.ini` | Configuration (managed via GUI) |
+| `/opt/WGDashboard/src/db/wgdashboard.db` | SQLite database (peers, traffic, API keys) |
+| `/opt/WGDashboard/src/db/wgdashboard_job.db` | Scheduled jobs database |
+| `/opt/WGDashboard.backup.<version>/` | Versioned backups (last 3 kept) |
 | `/etc/systemd/system/wg-dashboard.service` | Systemd service |
 
 ## Service Management

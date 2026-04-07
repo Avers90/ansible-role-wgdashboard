@@ -180,6 +180,66 @@
   when: wgdashboard_needs_update
   failed_when: false
 
+- name: wgdashboard | Backup data before update
+  when: wgdashboard_needs_update
+  block:
+    - name: wgdashboard | Create backup directory
+      ansible.builtin.file:
+        path: "{{ wgdashboard_install_dir }}.backup.{{ wgdashboard_current_version.stdout }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: wgdashboard | Backup database directory
+      ansible.builtin.copy:
+        src: "{{ wgdashboard_install_dir }}/src/db/"
+        dest: "{{ wgdashboard_install_dir }}.backup.{{ wgdashboard_current_version.stdout }}/db/"
+        remote_src: true
+        mode: preserve
+
+    - name: wgdashboard | Check if wg-dashboard.ini exists
+      ansible.builtin.stat:
+        path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+      register: _wgdashboard_ini
+
+    - name: wgdashboard | Backup wg-dashboard.ini
+      ansible.builtin.copy:
+        src: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+        dest: "{{ wgdashboard_install_dir }}.backup.{{ wgdashboard_current_version.stdout }}/wg-dashboard.ini"
+        remote_src: true
+        mode: "0600"
+      when: _wgdashboard_ini.stat.exists
+
+    - name: wgdashboard | Check if ssl-tls.ini exists
+      ansible.builtin.stat:
+        path: "{{ wgdashboard_install_dir }}/src/ssl-tls.ini"
+      register: _wgdashboard_ssl_ini
+
+    - name: wgdashboard | Backup ssl-tls.ini
+      ansible.builtin.copy:
+        src: "{{ wgdashboard_install_dir }}/src/ssl-tls.ini"
+        dest: "{{ wgdashboard_install_dir }}.backup.{{ wgdashboard_current_version.stdout }}/ssl-tls.ini"
+        remote_src: true
+        mode: "0600"
+      when: _wgdashboard_ssl_ini.stat.exists
+
+    - name: wgdashboard | Find old backups
+      ansible.builtin.find:
+        paths: "{{ wgdashboard_install_dir | dirname }}"
+        patterns: "{{ wgdashboard_install_dir | basename }}.backup.*"
+        file_type: directory
+      register: _wgdashboard_backups
+
+    - name: wgdashboard | Remove old backups (keep last 3)
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ (_wgdashboard_backups.files | sort(attribute='mtime') | list)[:-3] }}"
+      loop_control:
+        label: "{{ item.path }}"
+      when: _wgdashboard_backups.files | length > 3
+
 - name: wgdashboard | Update WGDashboard
   ansible.builtin.shell: |
     cd {{ wgdashboard_install_dir }}
