@@ -3,7 +3,7 @@
 [Unit]
 After=syslog.target network-online.target
 Wants={{ 'awg-quick' if wgdashboard_wg_backend == 'amneziawg' else 'wg-quick' }}@{{ wgdashboard_wg_interface }}.service
-ConditionPathIsDirectory=/etc/wireguard
+ConditionPathIsDirectory={{ '/etc/amnezia/amneziawg' if wgdashboard_wg_backend == 'amneziawg' else '/etc/wireguard' }}
 
 [Service]
 Type=forking
