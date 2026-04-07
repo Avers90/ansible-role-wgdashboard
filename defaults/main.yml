@@ -5,8 +5,13 @@ wgdashboard_version: "v4.3.1"
 ## Installation directory
 wgdashboard_install_dir: /opt/WGDashboard
 
-## WireGuard interface (for systemd service dependency and autostart)
+## WireGuard/AmneziaWG interface (for systemd service dependency and autostart)
+## For wireguard backend: set to wireguard_interface value (e.g. wg0)
+## For amneziawg backend: set to amneziawg_interface value (e.g. awg0)
 wgdashboard_wg_interface: "{{ wireguard_interface | default('wg0') }}"
+
+## VPN backend: wireguard (wg-quick@) or amneziawg (awg-quick@)
+wgdashboard_wg_backend: "wireguard"
 
 ## Account settings
 wgdashboard_admin_user: "admin"
@@ -27,6 +32,8 @@ wgdashboard_enable_totp: "false"
 wgdashboard_totp_verified: "false"
 
 ## Peer defaults
+## For amneziawg backend override this with amneziawg_address value:
+##   wgdashboard_peer_global_dns: "{{ amneziawg_address | ansible.utils.ipaddr('address') }}"
 wgdashboard_peer_global_dns: "{{ wireguard_address | default('10.0.0.1/24') | ansible.utils.ipaddr('address') }}"
 wgdashboard_peer_mtu: 1420
 wgdashboard_peer_keep_alive: 21
