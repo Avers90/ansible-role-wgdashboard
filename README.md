@@ -5,6 +5,7 @@ Install and configure [WGDashboard](https://github.com/WGDashboard/WGDashboard) 
 ## Requirements
 
 - Debian/Ubuntu
+- Python 3.12+ on the target host (required since WGDashboard v4.3.3)
 - WireGuard installed (use [ansible-role-wireguard](https://github.com/Avers90/ansible-role-wireguard))
 - Collections: `ansible.utils`, `community.general`
 
@@ -14,7 +15,7 @@ Other distributions will fail with an error message.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `wgdashboard_version` | `v4.3.1` | Version tag from GitHub |
+| `wgdashboard_version` | `v4.3.3` | Version tag from GitHub |
 | `wgdashboard_install_dir` | `/opt/WGDashboard` | Installation directory |
 | `wgdashboard_wg_interface` | `{{ wireguard_interface }}` | WireGuard interface |
 | `wgdashboard_admin_user` | `admin` | Admin username |
@@ -69,7 +70,7 @@ wgdashboard_peer_keep_alive: 15
 ### Current version
 
 ```yaml
-wgdashboard_version: "v4.3.1"
+wgdashboard_version: "v4.3.3"
 ```
 
 ### Updating to new version
@@ -77,6 +78,12 @@ wgdashboard_version: "v4.3.1"
 1. Check [WGDashboard releases](https://github.com/WGDashboard/WGDashboard/releases)
 2. Update `wgdashboard_version` in `defaults/main.yml`
 3. Run playbook — it will detect version mismatch and update
+
+> **Note (v4.3.3+):** Python 3.12+ is required. If the host is running Python 3.10/3.11,
+> upgrade Python manually first, then remove the old venv before running the playbook:
+> ```bash
+> rm -rf /opt/WGDashboard/src/venv
+> ```
 
 ### What happens during update
 

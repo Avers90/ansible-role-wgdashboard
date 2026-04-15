@@ -15,6 +15,24 @@
     state: present
     update_cache: true
 
+- name: wgdashboard | Get Python3 version
+  ansible.builtin.command: python3 --version
+  register: _wgdashboard_python_version
+  changed_when: false
+
+- name: wgdashboard | Fail if Python < 3.12
+  ansible.builtin.fail:
+    msg: >
+      Python 3.12+ is required since WGDashboard v4.3.3.
+      Detected: {{ _wgdashboard_python_version.stdout }}.
+      Please upgrade Python to 3.12 and remove {{ wgdashboard_install_dir }}/src/venv
+      before running this role.
+  when: >
+    (_wgdashboard_python_version.stdout
+      | regex_search('Python (\d+\.\d+)', '\1')
+      | first
+      | float) < 3.12
+
 - name: wgdashboard | Check if WGDashboard is already installed
   ansible.builtin.stat:
     path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
