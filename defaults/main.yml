@@ -40,5 +40,19 @@ wgdashboard_totp_verified: "false"
 ## For amneziawg backend override this with amneziawg_address value:
 ##   wgdashboard_peer_global_dns: "{{ amneziawg_address | ansible.utils.ipaddr('address') }}"
 wgdashboard_peer_global_dns: "{{ wireguard_address | default('10.0.0.1/24') | ansible.utils.ipaddr('address') }}"
+
 wgdashboard_peer_mtu: 1420
 wgdashboard_peer_keep_alive: 21
+
+## Endpoint that WGDashboard puts into peer .conf files (Endpoint=...:port).
+## Default: ansible_host (public IP from inventory).
+## Без этого WGDashboard резолвит через gethostbyname() → попадает на 127.0.1.1
+## из стандартной Debian-строки в /etc/hosts → конфиг непригоден для подключения.
+wgdashboard_peer_remote_endpoint: "{{ ansible_host }}"
+
+## Allowed IPs that WGDashboard puts into peer .conf files for new peers.
+## Default: route ALL traffic through tunnel (full-tunnel VPN).
+## Override to e.g. "10.0.0.0/24" if you need split-tunnel.
+## Без этого WGDashboard ставит <wg_network>/24 → через туннель идёт только
+## трафик к WG-сети, обычный интернет идёт мимо туннеля → VPN де-факто не работает.
+wgdashboard_peer_endpoint_allowed_ip: "0.0.0.0/0,::/0"

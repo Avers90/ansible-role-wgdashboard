@@ -140,6 +140,9 @@
   when: wgdashboard_needs_install
   notify: Restart WGDashboard
 
+## Peer defaults — синхронизируются при каждом прогоне (НЕ только при свежей
+## установке). До May 2026 здесь стояло `when: wgdashboard_needs_install`,
+## из-за чего изменения в host_vars не применялись на уже установленные сервера.
 - name: wgdashboard | Configure peer_global_dns
   community.general.ini_file:
     path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
@@ -147,7 +150,6 @@
     option: peer_global_dns
     value: "{{ wgdashboard_peer_global_dns }}"
     mode: "0600"
-  when: wgdashboard_needs_install
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure peer_mtu
@@ -157,7 +159,6 @@
     option: peer_mtu
     value: "{{ wgdashboard_peer_mtu }}"
     mode: "0600"
-  when: wgdashboard_needs_install
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure peer_keep_alive
@@ -167,7 +168,24 @@
     option: peer_keep_alive
     value: "{{ wgdashboard_peer_keep_alive }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Configure remote_endpoint (public IP в peer .conf)
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Peers
+    option: remote_endpoint
+    value: "{{ wgdashboard_peer_remote_endpoint }}"
+    mode: "0600"
+  notify: Restart WGDashboard
+
+- name: wgdashboard | Configure peer_endpoint_allowed_ip (full-tunnel по умолчанию)
+  community.general.ini_file:
+    path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
+    section: Peers
+    option: peer_endpoint_allowed_ip
+    value: "{{ wgdashboard_peer_endpoint_allowed_ip }}"
+    mode: "0600"
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure autostart interface

@@ -25,6 +25,8 @@ Other distributions will fail with an error message.
 | `wgdashboard_peer_global_dns` | from `wireguard_address` | Default DNS for peers |
 | `wgdashboard_peer_mtu` | `1420` | Default MTU for peers |
 | `wgdashboard_peer_keep_alive` | `21` | Default keep-alive for peers |
+| `wgdashboard_peer_remote_endpoint` | `{{ ansible_host }}` | Public IP/hostname WGDashboard puts into peer `Endpoint = ...:port`. Without this WGDashboard resolves via `gethostbyname()` → `127.0.1.1` from default Debian `/etc/hosts` |
+| `wgdashboard_peer_endpoint_allowed_ip` | `0.0.0.0/0,::/0` | Default `AllowedIPs` for new peers (full-tunnel). Override to e.g. `10.0.0.0/24` for split-tunnel |
 
 ## Password Hash Generation
 
@@ -59,8 +61,24 @@ wgdashboard_admin_pass_hash: "{{ vault_wgdashboard_pass_hash }}"
 wgdashboard_admin_user: "aver"
 wgdashboard_admin_pass_hash: "{{ vault_wgdashboard_pass_hash }}"
 wgdashboard_peer_global_dns: "10.110.0.1"
-wgdashboard_peer_mtu: 1380
+wgdashboard_peer_mtu: 1380          # override per host if PMTU issues observed
 wgdashboard_peer_keep_alive: 15
+# wgdashboard_peer_remote_endpoint: "{{ ansible_host }}"   # default
+# wgdashboard_peer_endpoint_allowed_ip: "0.0.0.0/0,::/0"   # default (full-tunnel)
+```
+
+### Split-tunnel example
+
+```yaml
+# Route only company subnet through VPN
+wgdashboard_peer_endpoint_allowed_ip: "10.50.0.0/16"
+```
+
+### Custom endpoint hostname
+
+```yaml
+# Use DNS instead of IP (requires A record for vpn.example.com)
+wgdashboard_peer_remote_endpoint: "vpn.example.com"
 ```
 
 ## Version Management
@@ -130,13 +148,29 @@ After installation, login with:
 
 ## Configuration
 
-After first run, all settings are managed through the WGDashboard GUI:
+Settings are split between Ansible-managed (idempotent across runs) and GUI-managed:
 
-- Host/port
+**Ansible-managed** (rewritten on every play, override via host_vars):
+
+- Account (admin user/password — only set on fresh install)
+- Server (`app_ip`, `app_port`)
+- **Peers (`peer_global_dns`, `peer_mtu`, `peer_keep_alive`, `remote_endpoint`,
+  `peer_endpoint_allowed_ip`)** — синхронизируются при каждом прогоне
+- WireGuardConfiguration (`autostart`)
+- Other (`welcome_session`)
+
+**GUI-managed** (changes preserved in `wg-dashboard.ini` between Ansible runs):
+
 - Theme
 - Language
-- Peer defaults (DNS, MTU, etc.)
-- Autostart interfaces
+- API keys
+- TOTP setup details
+
+If you change a Peer-related variable in `host_vars` and re-run the playbook —
+new value is applied to `wg-dashboard.ini` immediately, but **existing peers**
+keep their per-peer settings (MTU, AllowedIPs, etc.) — only **new** peers pick
+up the new defaults. To migrate existing peers, edit them via GUI or call
+WGDashboard API.
 
 ## Access Methods
 
