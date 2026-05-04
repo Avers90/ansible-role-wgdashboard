@@ -27,11 +27,9 @@
       Detected: {{ _wgdashboard_python_version.stdout }}.
       Please upgrade Python to 3.12 and remove {{ wgdashboard_install_dir }}/src/venv
       before running this role.
-  when: >
-    (_wgdashboard_python_version.stdout
-      | regex_search('Python (\d+\.\d+)', '\1')
-      | first
-      | float) < 3.12
+  vars:
+    _wgdashboard_python_ver: "{{ _wgdashboard_python_version.stdout | regex_search('\\d+\\.\\d+') }}"
+  when: (_wgdashboard_python_ver | float) < 3.12
 
 - name: wgdashboard | Check if WGDashboard is already installed
   ansible.builtin.stat:
