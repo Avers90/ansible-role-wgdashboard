@@ -48,10 +48,27 @@
   ansible.builtin.debug:
     msg: "WGDashboard is {{ 'installed (version ' + wgdashboard_current_version.stdout | default('unknown') + ')' if wgdashboard_installed.stat.exists else 'not installed' }}."
 
+# wgd.sh install does NOT populate [Account] in wg-dashboard.ini — that only
+# happens via the tasks below (or the app's own first-run setup wizard). If a
+# previous run got interrupted between "wgd.sh install" and these tasks (e.g.
+# ansible timeout), wgd.sh already exists on the next run, wgdashboard_needs_install
+# becomes false, and the account/config tasks below would be skipped forever,
+# leaving the app stuck on its first-run "Create an account" wizard. Detect
+# this independently of wgd.sh presence by checking whether an Account section
+# was actually written.
+- name: wgdashboard | Check if wg-dashboard.ini already has an Account section
+  ansible.builtin.command: >
+    grep -qE '^\s*username\s*=' {{ wgdashboard_install_dir }}/src/wg-dashboard.ini
+  register: _wgdashboard_ini_account
+  changed_when: false
+  failed_when: false
+  when: wgdashboard_installed.stat.exists
+
 - name: wgdashboard | Check if update is needed
   ansible.builtin.set_fact:
     wgdashboard_needs_install: "{{ not wgdashboard_installed.stat.exists }}"
     wgdashboard_needs_update: "{{ wgdashboard_installed.stat.exists and (wgdashboard_current_version.stdout | default('') != wgdashboard_version) }}"
+    wgdashboard_needs_account_setup: "{{ not wgdashboard_installed.stat.exists or (_wgdashboard_ini_account.rc | default(1)) != 0 }}"
 
 - name: wgdashboard | Display version information
   ansible.builtin.debug:
@@ -60,6 +77,7 @@
       Target version: {{ wgdashboard_version }}
       Needs install: {{ wgdashboard_needs_install }}
       Needs update: {{ wgdashboard_needs_update }}
+      Needs account setup: {{ wgdashboard_needs_account_setup }}
 
 ## Fresh install
 - name: wgdashboard | Clone WGDashboard repository (fresh install)
@@ -84,7 +102,8 @@
   changed_when: true
   when: wgdashboard_needs_install
 
-## Configure wg-dashboard.ini (only on fresh install)
+## Configure wg-dashboard.ini (fresh install, or a prior run that was
+## interrupted before this section ran — see wgdashboard_needs_account_setup above)
 - name: wgdashboard | Configure admin username
   community.general.ini_file:
     path: "{{ wgdashboard_install_dir }}/src/wg-dashboard.ini"
@@ -92,7 +111,7 @@
     option: username
     value: "{{ wgdashboard_admin_user }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure admin password
@@ -103,7 +122,7 @@
     value: "{{ wgdashboard_admin_pass_hash }}"
     mode: "0600"
   when:
-    - wgdashboard_needs_install
+    - wgdashboard_needs_account_setup
     - wgdashboard_admin_pass_hash != ""
   no_log: true
   notify: Restart WGDashboard
@@ -115,7 +134,7 @@
     option: enable_totp
     value: "{{ wgdashboard_enable_totp }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure totp verified
@@ -125,7 +144,7 @@
     option: totp_verified
     value: "{{ wgdashboard_totp_verified }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure app_ip
@@ -135,7 +154,7 @@
     option: app_ip
     value: "{{ wgdashboard_app_ip }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 ## Peer defaults — синхронизируются при каждом прогоне (НЕ только при свежей
@@ -193,7 +212,7 @@
     option: autostart
     value: "{{ wgdashboard_wg_interface }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 - name: wgdashboard | Configure welcome session
@@ -203,7 +222,7 @@
     option: welcome_session
     value: "{{ wgdashboard_welcome_session }}"
     mode: "0600"
-  when: wgdashboard_needs_install
+  when: wgdashboard_needs_account_setup
   notify: Restart WGDashboard
 
 ## Update existing installation
