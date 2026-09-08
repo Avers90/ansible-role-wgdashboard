@@ -152,7 +152,9 @@ Settings are split between Ansible-managed (idempotent across runs) and GUI-mana
 
 **Ansible-managed** (rewritten on every play, override via host_vars):
 
-- Account (admin user/password — only set on fresh install)
+- Account (admin user/password — set on fresh install, and self-heals if a
+  prior run was interrupted before this section was written, even though
+  `wgd.sh` itself is already present)
 - Server (`app_ip`, `app_port`)
 - **Peers (`peer_global_dns`, `peer_mtu`, `peer_keep_alive`, `remote_endpoint`,
   `peer_endpoint_allowed_ip`)** — синхронизируются при каждом прогоне
