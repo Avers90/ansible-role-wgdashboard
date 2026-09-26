@@ -15,10 +15,14 @@
     state: present
     update_cache: true
 
+# check_mode: false — read-only probe. Without it `command` is skipped under
+# --check, stdout is empty, and the next task fails with "Detected: ." on a
+# host that actually has Python 3.12.
 - name: wgdashboard | Get Python3 version
   ansible.builtin.command: python3 --version
   register: _wgdashboard_python_version
   changed_when: false
+  check_mode: false
 
 - name: wgdashboard | Fail if Python < 3.12
   ansible.builtin.fail:
@@ -36,10 +40,13 @@
     path: "{{ wgdashboard_install_dir }}/src/wgd.sh"
   register: wgdashboard_installed
 
+# check_mode: false — read-only probe. Skipped under --check it leaves stdout
+# empty, and the dry run falsely reports "Needs update: True".
 - name: wgdashboard | Get current installed version
   ansible.builtin.shell: |
     cd {{ wgdashboard_install_dir }} && git describe --tags --abbrev=0 2>/dev/null || echo "unknown"
   register: wgdashboard_current_version
+  check_mode: false
   changed_when: false
   failed_when: false
   when: wgdashboard_installed.stat.exists
