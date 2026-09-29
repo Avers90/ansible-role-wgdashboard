@@ -23,7 +23,7 @@ Other distributions will fail with an error message.
 | `wgdashboard_app_ip` | `127.0.0.1` | Listen IP address |
 | `wgdashboard_app_port` | `10086` | Listen port |
 | `wgdashboard_peer_global_dns` | from `wireguard_address` | Default DNS for peers |
-| `wgdashboard_peer_mtu` | `1420` | Default MTU for peers |
+| `wgdashboard_peer_mtu` | `1376` | Default MTU for new peers (headroom for LTE / PPPoE and AWG S4) |
 | `wgdashboard_peer_keep_alive` | `21` | Default keep-alive for peers |
 | `wgdashboard_peer_remote_endpoint` | `{{ ansible_host }}` | Public IP/hostname WGDashboard puts into peer `Endpoint = ...:port`. Without this WGDashboard resolves via `gethostbyname()` → `127.0.1.1` from default Debian `/etc/hosts` |
 | `wgdashboard_peer_endpoint_allowed_ip` | `0.0.0.0/0,::/0` | Default `AllowedIPs` for new peers (full-tunnel). Override to e.g. `10.0.0.0/24` for split-tunnel |

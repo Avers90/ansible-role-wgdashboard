@@ -41,7 +41,10 @@ wgdashboard_totp_verified: "false"
 ##   wgdashboard_peer_global_dns: "{{ amneziawg_address | ansible.utils.ipaddr('address') }}"
 wgdashboard_peer_global_dns: "{{ wireguard_address | default('10.0.0.1/24') | ansible.utils.ipaddr('address') }}"
 
-wgdashboard_peer_mtu: 1420
+## MTU handed to NEW peers. 1376 (not the kernel 1420) leaves room for LTE /
+## PPPoE / double NAT paths and for AmneziaWG S4 padding; the MSS clamp in
+## ansible-role-firewall covers TCP only, UDP/QUIC relies on this value.
+wgdashboard_peer_mtu: 1376
 wgdashboard_peer_keep_alive: 21
 
 ## Endpoint that WGDashboard puts into peer .conf files (Endpoint=...:port).
