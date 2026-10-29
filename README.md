@@ -6,6 +6,9 @@ Install and configure [WGDashboard](https://github.com/WGDashboard/WGDashboard) 
 
 - Debian/Ubuntu
 - Python 3.12+ on the target host (required since WGDashboard v4.3.3)
+- Node.js 20.19+ / 22.12+ (since v4.3.4 `wgd.sh install` builds the frontend with npm).
+  The role installs it from NodeSource (`wgdashboard_nodejs_major`) and pins `nodejs`
+  to that repo; the host needs `deb.nodesource.com` and `registry.npmjs.org`
 - WireGuard installed (use [ansible-role-wireguard](https://github.com/Avers90/ansible-role-wireguard))
 - Collections: `ansible.utils`, `community.general`
 
@@ -15,8 +18,12 @@ Other distributions will fail with an error message.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `wgdashboard_version` | `v4.3.3` | Version tag from GitHub |
+| `wgdashboard_version` | `v4.3.4` | Version tag from GitHub |
 | `wgdashboard_install_dir` | `/opt/WGDashboard` | Installation directory |
+| `wgdashboard_nodejs_major` | `22` | Node.js major from NodeSource (frontend build) |
+| `wgdashboard_node_max_old_space_mb` | `1024` | `NODE_OPTIONS=--max-old-space-size` for the build |
+| `wgdashboard_install_async_timeout` | `1800` | Max seconds for `wgd.sh install` (async, polled every 15 s) |
+| `wgdashboard_frontend_cleanup` | `true` | Remove `node_modules` and the npm cache after a verified build |
 | `wgdashboard_wg_interface` | `{{ wireguard_interface }}` | WireGuard interface |
 | `wgdashboard_admin_user` | `admin` | Admin username |
 | `wgdashboard_admin_pass_hash` | `""` | Bcrypt password hash (empty = default 'admin') |
@@ -88,7 +95,7 @@ wgdashboard_peer_remote_endpoint: "vpn.example.com"
 ### Current version
 
 ```yaml
-wgdashboard_version: "v4.3.3"
+wgdashboard_version: "v4.3.4"
 ```
 
 ### Updating to new version
@@ -108,10 +115,17 @@ wgdashboard_version: "v4.3.3"
 1. Stop WGDashboard service
 2. Create backup of user data (see below)
 3. `git fetch --tags`
-4. `git checkout <version>`
-5. `./wgd.sh install`
-6. Fix file permissions
-7. Restart service
+4. `rm -rf src/static/dist` + `git checkout -f <version>` (dist was tracked before
+   v4.3.4, it is a build artifact since)
+5. `./wgd.sh install` — npm build + pip, async
+6. Verify `dist/WGDashboardAdmin/index.html` and `dist/WGDashboardClient/client.html`
+7. Remove `src/static/{app,client}/node_modules` and the npm cache (the app serves `dist/` only)
+8. Fix file permissions
+9. Restart service
+
+If step 4–6 fails, the role checks out the previous tag, runs its `wgd.sh install`
+(restores that version's Python deps and frontend), starts the service and fails.
+Build log: `/opt/WGDashboard/src/log/install.txt`.
 
 ### Backup before update
 

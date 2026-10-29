@@ -15,6 +15,53 @@
     state: present
     update_cache: true
 
+## Node.js — since v4.3.4 the frontend is no longer committed; wgd.sh install
+## builds it with npm and halts on Node < 20.19 (Ubuntu 24.04 ships 18.19).
+## The pin keeps the distro nodejs from winning on a later apt upgrade.
+- name: wgdashboard | Add NodeSource repository
+  ansible.builtin.deb822_repository:
+    name: nodesource
+    types: [deb]
+    uris: "https://deb.nodesource.com/node_{{ wgdashboard_nodejs_major }}.x"
+    suites: nodistro
+    components: [main]
+    signed_by: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    state: present
+  register: _wgdashboard_nodesource_repo
+
+- name: wgdashboard | Pin nodejs to NodeSource
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/nodesource
+    content: |
+      Package: nodejs
+      Pin: origin deb.nodesource.com
+      Pin-Priority: 600
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: wgdashboard | Install Node.js
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: "{{ _wgdashboard_nodesource_repo is changed }}"
+
+- name: wgdashboard | Get Node.js version
+  ansible.builtin.command: node --version
+  register: _wgdashboard_node_version
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: wgdashboard | Fail if Node.js < 20.19
+  ansible.builtin.fail:
+    msg: >
+      Node.js 20.19+ or 22.12+ is required to build the WGDashboard frontend.
+      Detected: {{ _wgdashboard_node_version.stdout | default('none') }}.
+  when:
+    - not ansible_check_mode
+    - (_wgdashboard_node_version.stdout | default('v0') | regex_replace('^v', '')) is version('20.19', '<')
+
 # check_mode: false — read-only probe. Without it `command` is skipped under
 # --check, stdout is empty, and the next task fails with "Detected: ." on a
 # host that actually has Python 3.12.
@@ -105,8 +152,20 @@
   ansible.builtin.shell: |
     cd {{ wgdashboard_install_dir }}/src
     ./wgd.sh install
+  environment:
+    NODE_OPTIONS: "--max-old-space-size={{ wgdashboard_node_max_old_space_mb }}"
   register: wgd_install_result
   changed_when: true
+  async: "{{ wgdashboard_install_async_timeout }}"
+  poll: 15
+  when: wgdashboard_needs_install
+
+- name: wgdashboard | Verify frontend build (fresh install)
+  ansible.builtin.stat:
+    path: "{{ wgdashboard_install_dir }}/src/static/dist/{{ item }}"
+  register: _wgdashboard_dist_fresh
+  failed_when: not _wgdashboard_dist_fresh.stat.exists
+  loop: "{{ _wgdashboard_dist_files }}"
   when: wgdashboard_needs_install
 
 ## Configure wg-dashboard.ini (fresh install, or a prior run that was
@@ -300,18 +359,81 @@
         label: "{{ item.path }}"
       when: _wgdashboard_backups.files | length > 3
 
+## On failure: back to the previous tag and its own wgd.sh install (restores
+## that version's Python deps and frontend), start the service, then fail.
+## dist/ is removed first: tracked before v4.3.4, a build artifact since.
 - name: wgdashboard | Update WGDashboard
-  ansible.builtin.shell: |
-    cd {{ wgdashboard_install_dir }}
-    git fetch --tags
-    git checkout {{ wgdashboard_version }}
-    chmod +x src/wgd.sh
-    cd src
-    ./wgd.sh install
-  register: wgd_update_result
-  changed_when: true
   when: wgdashboard_needs_update
-  notify: Restart WGDashboard
+  block:
+    - name: wgdashboard | Checkout new version and run install script
+      ansible.builtin.shell: |
+        set -e
+        cd {{ wgdashboard_install_dir }}
+        git fetch --tags
+        rm -rf src/static/dist
+        git checkout -f {{ wgdashboard_version }}
+        chmod +x src/wgd.sh
+        cd src
+        ./wgd.sh install
+      environment:
+        NODE_OPTIONS: "--max-old-space-size={{ wgdashboard_node_max_old_space_mb }}"
+      register: wgd_update_result
+      changed_when: true
+      async: "{{ wgdashboard_install_async_timeout }}"
+      poll: 15
+      notify: Restart WGDashboard
+
+    - name: wgdashboard | Verify frontend build
+      ansible.builtin.stat:
+        path: "{{ wgdashboard_install_dir }}/src/static/dist/{{ item }}"
+      register: _wgdashboard_dist_update
+      failed_when: not _wgdashboard_dist_update.stat.exists
+      loop: "{{ _wgdashboard_dist_files }}"
+
+  rescue:
+    - name: wgdashboard | Roll back to previous version
+      ansible.builtin.shell: |
+        set -e
+        cd {{ wgdashboard_install_dir }}
+        rm -rf src/static/dist
+        git checkout -f {{ wgdashboard_current_version.stdout }}
+        chmod +x src/wgd.sh
+        cd src
+        ./wgd.sh install
+      environment:
+        NODE_OPTIONS: "--max-old-space-size={{ wgdashboard_node_max_old_space_mb }}"
+      async: "{{ wgdashboard_install_async_timeout }}"
+      poll: 15
+
+    - name: wgdashboard | Start WGDashboard after rollback
+      ansible.builtin.systemd:
+        name: wg-dashboard
+        state: started
+
+    - name: wgdashboard | Fail after rollback
+      ansible.builtin.fail:
+        msg: >
+          Update to {{ wgdashboard_version }} failed, rolled back to
+          {{ wgdashboard_current_version.stdout }}. See
+          {{ wgdashboard_install_dir }}/src/log/install.txt on the host.
+
+## node_modules and the npm cache are only needed to build dist/; the app
+## serves src/static/dist. Removed only after the build is verified.
+- name: wgdashboard | Remove frontend build dependencies
+  ansible.builtin.file:
+    path: "{{ wgdashboard_install_dir }}/src/static/{{ item }}/node_modules"
+    state: absent
+  loop: [app, client]
+  when:
+    - wgdashboard_frontend_cleanup | bool
+    - wgdashboard_needs_install or wgdashboard_needs_update
+
+- name: wgdashboard | Clean npm cache
+  ansible.builtin.command: npm cache clean --force
+  changed_when: true
+  when:
+    - wgdashboard_frontend_cleanup | bool
+    - wgdashboard_needs_install or wgdashboard_needs_update
 
 ## Fix permissions after wgd.sh install (it sets 755 on VPN config files)
 - name: wgdashboard | Find private key files

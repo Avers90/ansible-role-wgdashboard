@@ -1,9 +1,19 @@
 ---
 ## WGDashboard version (always specify exact version for controlled updates)
-wgdashboard_version: "v4.3.3"
+wgdashboard_version: "v4.3.4"
 
 ## Installation directory
 wgdashboard_install_dir: /opt/WGDashboard
+
+## Node.js major from NodeSource — wgd.sh builds the frontend since v4.3.4
+## and needs Node 20.19+ / 22.12+ (Ubuntu 24.04 apt has 18.19).
+wgdashboard_nodejs_major: 22
+## Heap limit for the Vite build (NODE_OPTIONS), keeps it inside a 2 GB VPS
+wgdashboard_node_max_old_space_mb: 1024
+## Max seconds for wgd.sh install (npm build + pip), polled every 15 s
+wgdashboard_install_async_timeout: 1800
+## Remove node_modules and the npm cache after a verified build
+wgdashboard_frontend_cleanup: true
 
 ## WireGuard/AmneziaWG interface (for systemd service dependency and autostart)
 ## For wireguard backend: set to wireguard_interface value (e.g. wg0)

@@ -1,0 +1,5 @@
+---
+## Files that must exist after wgd.sh install (frontend build output)
+_wgdashboard_dist_files:
+  - WGDashboardAdmin/index.html
+  - WGDashboardClient/client.html
